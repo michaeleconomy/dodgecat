@@ -1,0 +1,12 @@
+# Xcode project user directories
+project.xcworkspace
+xcuserdata
+
+# build directories
+build
+Build
+
+# OS generated files
+.DS_Store
+.DS_Store?
+
