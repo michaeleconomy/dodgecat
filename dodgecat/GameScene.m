@@ -8,14 +8,21 @@
 
 #import "GameScene.h"
 
+#define OFF_SCREEN (CGPointMake(9999.0f, 9999.0f))
+
+
 typedef NS_ENUM(NSUInteger, CatState) {
     CatUp,
     CatDown,
-    CatDodged
+    CatDodged,
+    CatHurt,
 };
 
 @implementation GameScene
 {
+    SKTexture *_normalCatTexture;
+    SKTexture *_dodgedCatTexture;
+    
     SKSpriteNode *_cat;
     SKSpriteNode *_roll;
     SKSpriteNode *_paperMiddle;
@@ -23,13 +30,20 @@ typedef NS_ENUM(NSUInteger, CatState) {
     SKSpriteNode *_pile;
     SKLabelNode *_scoreLabel;
     
+    NSArray *_pileTextures;
+    
+    NSTimer *_projectileTimer;
+    
     CatState _cat_state;
     
-    int score;
+    int level_score;
+    
+    int total_score;
+    
+    int level;
 }
 
 -(void)didMoveToView:(SKView *)view {
-    score = 0;
     /* Setup your scene here */
 //    SKLabelNode *myLabel = [SKLabelNode labelNodeWithFontNamed:@"Chalkduster"];
 //    
@@ -41,6 +55,13 @@ typedef NS_ENUM(NSUInteger, CatState) {
 //    [self addChild:myLabel];
     
     
+    [self setUpGame];
+}
+
+-(void)setUpGame {
+    level = 1;
+    total_score = 0;
+
     
     SKSpriteNode * bg = [SKSpriteNode spriteNodeWithImageNamed:@"background"];
     bg.position = CGPointMake(CGRectGetMidX(self.frame),
@@ -48,19 +69,20 @@ typedef NS_ENUM(NSUInteger, CatState) {
     [self addChild:bg];
     
     _roll = [SKSpriteNode spriteNodeWithImageNamed:@"roll"];
-    _roll.position = CGPointMake(220.0f, 220.0f);
+    
     [self addChild:_roll];
     
     
     _paperMiddle = [SKSpriteNode spriteNodeWithImageNamed:@"paper_middle"];
-    _paperMiddle.position = CGPointMake(217.0f, 214.0f);
+    
     [self addChild:_paperMiddle];
     
     _paperBottom = [SKSpriteNode spriteNodeWithImageNamed:@"paper_bottom"];
-    _paperBottom.position = CGPointMake(217.0f, 214.0f);
     [self addChild:_paperBottom];
     
-    _cat = [SKSpriteNode spriteNodeWithImageNamed:@"cat"];
+    _normalCatTexture = [SKTexture textureWithImageNamed:@"cat"];
+    _dodgedCatTexture = [SKTexture textureWithImageNamed:@"dodged_cat"];
+    _cat = [SKSpriteNode spriteNodeWithTexture:_normalCatTexture];
     _cat.position = CGPointMake(250.0f, 140.0f);
     
     _cat.zPosition = 3.0f;
@@ -73,19 +95,60 @@ typedef NS_ENUM(NSUInteger, CatState) {
     _scoreLabel.text = @"0";
     _scoreLabel.fontSize = 36;
     _scoreLabel.fontColor = [UIColor blackColor];
-    _scoreLabel.position = CGPointMake(280.0f,
-                                       530.0f);
+    _scoreLabel.position = CGPointMake(280.0f, 530.0f);
     
     [self addChild:_scoreLabel];
+    _pileTextures = @[[SKTexture textureWithImageNamed:@"pile1"],
+                      [SKTexture textureWithImageNamed:@"pile2"],
+                      [SKTexture textureWithImageNamed:@"pile3"],
+                      [SKTexture textureWithImageNamed:@"pile4"]];
+    
+    _pile = [SKSpriteNode spriteNodeWithTexture:_pileTextures[0]];
+    _pile.zPosition = 2.0f;
+    [self addChild:_pile];
+    
+    [self setUpLevel];
+}
 
+-(void)setUpLevel {
+    level_score = 0;
+    
+    
+    _pile.position = OFF_SCREEN;
+    _roll.position = CGPointMake(220.0f, 220.0f);
+    
+    _paperMiddle.position = CGPointMake(217.0f, 215.0f);
+    _paperMiddle.yScale = 1.0f;
+    
+    
+    _paperBottom.position = CGPointMake(217.0f, 214.0f);
+    
+    
+    _cat.texture = _normalCatTexture;
+    _cat.position = CGPointMake(250.0f, 140.0f);
+    _cat_state = CatDown;
+    
+    
+    //TODO: tell the user what level they're on
+    
+    //TODO - start projectile timer
+}
+
+-(void)levelComplete {
+    //TODO - stop projectile timer
+    //TODO - TP falls off roll
+    //TODO- cat celebrate
+    level++;
+    [self setUpLevel];
 }
 
 -(void)pullTP {
     
-    score += 1;
-    _scoreLabel.text = [NSString stringWithFormat:@"%d", score];
+    level_score++;
+    total_score++;
+    _scoreLabel.text = [NSString stringWithFormat:@"%d", total_score];
     
-    if (score < 10) {
+    if (level_score < 10) {
         CGPoint middle_pos = _paperMiddle.position;
         middle_pos.y -= 5;
         _paperMiddle.position = middle_pos;
@@ -97,28 +160,26 @@ typedef NS_ENUM(NSUInteger, CatState) {
         _paperBottom.position = bottom_pos;
     }
     
-    if (score == 10) {
-        [self removeChildrenInArray:@[_paperBottom]];
-        _pile = [SKSpriteNode spriteNodeWithImageNamed:@"pile1"];
+    if (level_score == 10) {
+        _paperBottom.position = OFF_SCREEN;
         _pile.position = CGPointMake(220.0f, 130.0f);
-        _pile.zPosition = 2.0f;
-        [self addChild:_pile];
+        _pile.texture = _pileTextures[0];
     }
     
-    if (score == 20) {
-        _pile.texture = [SKTexture textureWithImageNamed:@"pile2"];
+    if (level_score == 20) {
+        _pile.texture = _pileTextures[1];
     }
     
-    if (score == 30) {
-        _pile.texture = [SKTexture textureWithImageNamed:@"pile3"];
+    if (level_score == 30) {
+        _pile.texture = _pileTextures[2];
     }
     
-    if (score == 40) {
-        _pile.texture = [SKTexture textureWithImageNamed:@"pile4"];
+    if (level_score == 40) {
+        _pile.texture = _pileTextures[3];
     }
     
-    if (score == 50) {
-        // DO NEXT LEVEL
+    if (level_score == 50) {
+        [self levelComplete];
     }
 
 }
@@ -132,22 +193,26 @@ typedef NS_ENUM(NSUInteger, CatState) {
 
 
 -(Boolean)touchInDodgeArea:(CGPoint) touch_location {
-    CGRect dodge_click_area = CGRectMake(47, 65, 140, 95);
+    CGRect dodge_click_area = CGRectMake(47, 65, 140, 150);
     
     return CGRectContainsPoint(dodge_click_area, touch_location);
 }
 
 -(void) moveCat {
     if (_cat_state == CatDodged) {
-        _cat.position = CGPointMake(87.0f, 65.0f);
+        _cat.position = CGPointMake(107.0f, 105.0f);
+        _cat.texture = _dodgedCatTexture;
     }
     else if (_cat_state == CatDown) {
         _cat.position = CGPointMake(250.0f, 140.0f);
+        _cat.texture = _normalCatTexture;
     }
     else if (_cat_state == CatUp) {
         _cat.position = CGPointMake(250.0f, 130.0f);
+        _cat.texture = _normalCatTexture;
         
     }
+    _cat.size = _cat.texture.size;
 }
 
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
